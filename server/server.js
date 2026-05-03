@@ -18,9 +18,8 @@ const PORT = process.env.PORT || 3000;
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
-    console.log(chalk.green('DB CONNECTED'));
+    console.log(chalk.blue('DB CONNECTED'));
 
-    // ✅ START SERVER AFTER DB READY
     app.listen(PORT, () => {
       console.log(chalk.yellow(`App is running @${PORT}`));
     });
