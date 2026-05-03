@@ -1,0 +1,302 @@
+/* ===== FOOTER ===== */
+.footer {
+  position: relative;
+  z-index: 1;
+
+  width: 100%;
+  padding: 90px 20px;
+
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(168, 85, 247, 0.18),
+      transparent 60%
+    ),
+    #0d0520;
+
+  border-top: 1px solid rgba(168, 85, 247, 0.25);
+
+  backdrop-filter: blur(20px);
+  overflow: hidden;
+}
+
+/* ===== GLOW BACKGROUND ===== */
+.footer-glow {
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  filter: blur(120px);
+  opacity: 0.2;
+  z-index: 0;
+}
+
+.glow-1 {
+  background: #a855f7;
+  top: -120px;
+  left: -120px;
+}
+
+.glow-2 {
+  background: #c084fc;
+  bottom: -120px;
+  right: -120px;
+}
+
+/* ===== CONTAINER ===== */
+.footer-container {
+  position: relative;
+  z-index: 2;
+
+  max-width: 1200px;
+  margin: auto;
+}
+
+/* ===== TOP ===== */
+.footer-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 50px;
+  flex-wrap: wrap;
+}
+
+/* ===== BRAND ===== */
+.footer-brand h2 {
+  font-size: 30px;
+  margin-bottom: 10px;
+}
+
+.logo-white {
+  color: #fff;
+}
+
+.logo-purple {
+  background: linear-gradient(90deg, #a855f7, #c084fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.footer-brand p {
+  color: #a1a1aa;
+  font-size: 14px;
+  max-width: 260px;
+  line-height: 1.6;
+}
+
+/* ===== LABEL ===== */
+.footer-label {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+/* ===== CONTACT ===== */
+.footer-contact span {
+  color: #c084fc;
+  font-size: 14px;
+}
+
+/* ===== SOCIAL ===== */
+.footer-socials {
+  display: flex;
+  flex-direction: column;
+}
+
+/* BUTTON GROUP */
+.social-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+/* BUTTON BASE */
+.footer button {
+  padding: 10px 22px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+
+  font-size: 13px;
+  font-weight: 500;
+
+  transition: all 0.25s ease;
+}
+
+/* ===== DISCORD BUTTON ===== */
+.btn-discord {
+  background: linear-gradient(135deg, #9333ea, #c084fc);
+  color: white;
+
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
+}
+
+.btn-discord:hover {
+  transform: translateY(-3px) scale(1.05);
+
+  box-shadow:
+    0 0 30px rgba(168, 85, 247, 1),
+    0 0 60px rgba(168, 85, 247, 0.5);
+}
+
+/* ===== X BUTTON ===== */
+.btn-x {
+  background: transparent;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  color: #c084fc;
+}
+
+.btn-x:hover {
+  background: rgba(168, 85, 247, 0.2);
+  transform: translateY(-2px);
+}
+
+/* ===== DIVIDER ===== */
+.footer-divider {
+  height: 1px;
+  margin: 50px 0;
+
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(168, 85, 247, 0.4),
+    transparent
+  );
+}
+
+/* ===== BOTTOM ===== */
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+/* ===== LINKS ===== */
+.footer-links {
+  display: flex;
+  gap: 25px;
+}
+
+.footer-links p {
+  color: #a1a1aa;
+  cursor: pointer;
+  position: relative;
+  transition: 0.3s;
+}
+
+/* UNDERLINE ANIMATION */
+.footer-links p::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: 0%;
+  height: 2px;
+  background: linear-gradient(90deg, #a855f7, #c084fc);
+  transition: 0.3s;
+}
+
+.footer-links p:hover {
+  color: #c084fc;
+}
+
+.footer-links p:hover::after {
+  width: 100%;
+}
+
+/* ===== COPYRIGHT ===== */
+.footer-copy {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* ===== TOAST (VERY IMPORTANT FIX) ===== */
+.footer-toast {
+  position: fixed;
+  top: 90px;
+  right: 25px;
+
+  padding: 14px 22px;
+  border-radius: 12px;
+
+  font-size: 14px;
+  font-family: 'Sora', sans-serif;
+
+  color: white;
+
+  background: linear-gradient(135deg, #9333ea, #c084fc);
+
+  box-shadow:
+    0 0 25px rgba(168, 85, 247, 0.6),
+    0 0 50px rgba(168, 85, 247, 0.3);
+
+  z-index: 9999; /* 🔥 FIX: ALWAYS ON TOP */
+
+  animation:
+    toastSlide 0.3s ease,
+    toastFade 2.5s forwards;
+}
+
+/* SLIDE IN */
+@keyframes toastSlide {
+  from {
+    transform: translateX(80px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* FADE OUT */
+@keyframes toastFade {
+  0% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ===== TABLET ===== */
+@media (max-width: 900px) {
+  .footer-top {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .footer-brand p {
+    margin: auto;
+  }
+
+  .footer-socials {
+    align-items: center;
+  }
+}
+
+/* ===== MOBILE ===== */
+@media (max-width: 600px) {
+  .footer {
+    padding: 70px 16px;
+  }
+
+  .footer-top {
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+  }
+
+  .footer-bottom {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .footer-links {
+    justify-content: center;
+  }
+}

@@ -1,0 +1,63 @@
+/* RESET */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* FULL HEIGHT */
+html,
+body,
+#root,
+.app {
+  height: 100%;
+  width: 100%;
+}
+
+/* SMOOTH SCROLL */
+html {
+  scroll-behavior: smooth;
+}
+.particle {
+  pointer-events: none;
+}
+/* ===== RESET ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ===== GLOBAL ===== */
+body {
+  font-family: 'Sora', sans-serif;
+  background: #0d0520;
+  color: #ffffff;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ===== HEADINGS ===== */
+h1,
+h2,
+h3 {
+  font-family: 'Sora', sans-serif;
+  letter-spacing: -0.5px;
+}
+
+/* ===== TEXT ===== */
+p {
+  font-size: 15px;
+  line-height: 1.8;
+  color: #a1a1aa;
+}
+
+/* ===== LINKS ===== */
+a {
+  text-decoration: none;
+  color: inherit;
+}

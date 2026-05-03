@@ -1,0 +1,25 @@
+.particle {
+  position: fixed;
+  pointer-events: none;
+  border-radius: 50%;
+
+  background: radial-gradient(circle, #c084fc, #9333ea);
+
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+
+  animation: particleFade 0.8s ease-out forwards;
+}
+
+/* animation */
+@keyframes particleFade {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -80%) scale(0.2);
+  }
+}
