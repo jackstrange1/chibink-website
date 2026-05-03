@@ -7,6 +7,7 @@ const whitelistSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true, // 🚀 prevent duplicate wallets
+      lowercase: true,
       trim: true,
     },
 
