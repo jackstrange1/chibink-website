@@ -3,7 +3,7 @@ const chalk = require('chalk');
 const cors = require('cors');
 require('dotenv').config();
 
-const db = require('./db');
+const mongoose = require('mongoose');
 const routes = require('./routes');
 
 const app = express();
@@ -11,7 +11,20 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 app.use(routes);
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(chalk.yellow(`App is running @${PORT}`));
-});
+
+// 🔥 CONNECT DB FIRST
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log(chalk.green('DB CONNECTED'));
+
+    // ✅ START SERVER AFTER DB READY
+    app.listen(PORT, () => {
+      console.log(chalk.yellow(`App is running @${PORT}`));
+    });
+  })
+  .catch(err => {
+    console.error('DB ERROR:', err);
+  });
