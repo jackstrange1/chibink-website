@@ -2,4 +2,3 @@ node_modules
 .env
 client/node_modules
 server/node_modules
-mongodb+srv://chibink:Basil@123@cluster0.xl7jrjb.mongodb.net/?appName=Cluster0
