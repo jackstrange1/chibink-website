@@ -48,7 +48,7 @@ const Whitelist = () => {
       setLoading(true);
       setError('');
 
-      await axios.post('http://localhost:3000/api/whitelist', {
+      await axios.post('https://chibink-website.onrender.com/api/whitelist', {
         wallet,
         tweetLink,
         tasks,

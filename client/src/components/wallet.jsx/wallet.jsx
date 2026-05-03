@@ -29,7 +29,9 @@ const WalletChecker = ({ isOpen, onClose }) => {
       setResult('');
       setStatus('');
 
-      const res = await axios.get(`http://localhost:3000/api/wallet/${value}`);
+      const res = await axios.get(
+        `https://chibink-website.onrender.com/api/wallet/${value}`
+      );
 
       setStatus('success');
       setResult(res.data.msg);
