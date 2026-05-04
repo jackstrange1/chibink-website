@@ -1,8 +1,11 @@
-const whitelistRoutes = require('./whitelist');
-const wallet = require('./wallet');
 const express = require('express');
 const router = express.Router();
-router.use('/api/whitelist', whitelistRoutes);
-router.use('/api/wallet', wallet);
+
+const whitelistRoutes = require('./whitelist');
+const walletRoutes = require('./wallet');
+
+// cleaner: no /api here
+router.use('/whitelist', whitelistRoutes);
+router.use('/wallet', walletRoutes);
 
 module.exports = router;
