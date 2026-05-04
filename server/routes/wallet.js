@@ -12,12 +12,12 @@ router.get('/:wallet', async (req, res) => {
     const input = normalize(raw);
 
     // ✅ simple + reliable validation (0x + exact 40 chars)
-    if (!input.startsWith('0x') || input.length !== 42) {
-      return res.status(400).json({
-        status: 'error',
-        msg: 'Invalid wallet address',
-      });
-    }
+    // if (!/^0x[a-f0-9]{40}$/.test(value)) {
+    //   return res.status(400).json({
+    //     status: 'error',
+    //     msg: 'Invalid wallet address',
+    //   });
+    // }
 
     // 🔍 find wallet
     const walletDoc = await Wallet.findOne({ wallet: input });
