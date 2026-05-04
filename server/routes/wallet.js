@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Wallet = require('../db/models/walletSchema');
+const { isAddress } = require('ethers');
 
 // helper: normalize wallet
 const normalize = addr => addr.trim().toLowerCase();
@@ -8,52 +9,49 @@ const normalize = addr => addr.trim().toLowerCase();
 // GET /api/wallet/:wallet
 router.get('/:wallet', async (req, res) => {
   try {
-    const raw = req.params.wallet;
-    const input = normalize(raw);
+    const raw = req.params.wallet?.trim();
 
-    // ✅ simple + reliable validation (0x + exact 40 chars)
-    if (!input.startsWith('0x') || input.length !== 42) {
+    // ✅ validate using ethers (best practice)
+    if (!raw || !isAddress(raw)) {
       return res.status(400).json({
-        status: 'error',
-        msg: 'Invalid wallet address',
+        success: false,
+        status: 'invalid',
+        message: 'Invalid wallet address',
       });
     }
 
-    // 🔍 find wallet
-    const walletDoc = await Wallet.findOne({ wallet: input });
+    const wallet = normalize(raw);
+
+    // 🔍 query (lean = faster, no mongoose overhead)
+    const walletDoc = await Wallet.findOne({ wallet }).lean();
 
     // ❌ not found
     if (!walletDoc) {
-      return res.json({
+      return res.status(200).json({
+        success: true,
         status: 'none',
-        msg: '❌ Not eligible',
+        message: '❌ Not eligible',
       });
     }
 
-    // ✅ found → return based on status
-    let message = '';
+    // ✅ status mapping
+    const statusMap = {
+      gtd: '🎉 Guaranteed WL (GTD)',
+      fcfs: '⚡ FCFS Access',
+    };
 
-    switch (walletDoc.status) {
-      case 'gtd':
-        message = '🎉 Guaranteed WL (GTD)';
-        break;
-      case 'fcfs':
-        message = '⚡ FCFS Access';
-        break;
-      default:
-        message = '❌ Not eligible';
-    }
-
-    return res.json({
+    return res.status(200).json({
+      success: true,
       status: walletDoc.status,
-      msg: message,
+      message: statusMap[walletDoc.status] || '❌ Not eligible',
     });
   } catch (err) {
     console.error('Wallet check error:', err);
 
     return res.status(500).json({
+      success: false,
       status: 'error',
-      msg: 'Server error',
+      message: 'Internal server error',
     });
   }
 });
