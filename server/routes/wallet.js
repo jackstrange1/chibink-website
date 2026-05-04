@@ -3,6 +3,7 @@ const router = express.Router();
 const Wallet = require('../db/models/walletSchema');
 
 // helper: normalize wallet
+// helper: normalize wallet
 const normalize = addr => addr.trim().toLowerCase();
 
 // GET /api/wallet/:wallet
@@ -11,18 +12,16 @@ router.get('/:wallet', async (req, res) => {
     const raw = req.params.wallet;
     const input = normalize(raw);
 
-    // ✅ simple + reliable validation (0x + exact 40 chars)
-    // if (!/^0x[a-f0-9]{40}$/.test(value)) {
-    //   return res.status(400).json({
-    //     status: 'error',
-    //     msg: 'Invalid wallet address',
-    //   });
-    // }
+    // ✅ FIXED HERE
+    if (!/^0x[a-f0-9]{40}$/.test(input)) {
+      return res.status(400).json({
+        status: 'error',
+        msg: 'Invalid wallet address',
+      });
+    }
 
-    // 🔍 find wallet
     const walletDoc = await Wallet.findOne({ wallet: input });
 
-    // ❌ not found
     if (!walletDoc) {
       return res.json({
         status: 'none',
@@ -30,7 +29,6 @@ router.get('/:wallet', async (req, res) => {
       });
     }
 
-    // ✅ found → return based on status
     let message = '';
 
     switch (walletDoc.status) {

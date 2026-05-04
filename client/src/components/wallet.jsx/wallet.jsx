@@ -18,11 +18,11 @@ const WalletChecker = ({ isOpen, onClose }) => {
       return;
     }
 
-    // if (!/^0x[a-f0-9]{40}$/.test(value)) {
-    //   setStatus('error');
-    //   setResult('Invalid wallet address');
-    //   return;
-    // }
+    if (!/^0x[a-f0-9]{40}$/.test(value)) {
+      setStatus('error');
+      setResult('Invalid wallet address');
+      return;
+    }
 
     try {
       setLoading(true);
