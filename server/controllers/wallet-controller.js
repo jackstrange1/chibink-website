@@ -11,7 +11,76 @@ const isValidWallet = value => /^0x[a-f0-9]{40}$/.test(value);
 // =======================
 module.exports.addWallet = async (req, res) => {
   try {
-    let { wallet, status } = req.body;
+    const data = req.body;
+
+    const allowedStatus = ['gtd', 'fcfs', 'none'];
+
+    // =========================
+    // ✅ BULK INSERT (ARRAY)
+    // =========================
+    if (Array.isArray(data)) {
+      if (data.length === 0) {
+        return res.status(400).json({
+          status: 'error',
+          msg: 'Empty wallet list',
+        });
+      }
+
+      const validWallets = [];
+      const errors = [];
+
+      for (let i = 0; i < data.length; i++) {
+        const item = data[i];
+
+        if (!item.wallet) {
+          errors.push(`Index ${i}: Wallet is required`);
+          continue;
+        }
+
+        const normalizedWallet = normalize(item.wallet);
+
+        if (!isValidWallet(normalizedWallet)) {
+          errors.push(`Index ${i}: Invalid wallet`);
+          continue;
+        }
+
+        if (item.status && !allowedStatus.includes(item.status)) {
+          errors.push(`Index ${i}: Invalid status`);
+          continue;
+        }
+
+        validWallets.push({
+          wallet: normalizedWallet,
+          status: item.status || 'none',
+        });
+      }
+
+      if (validWallets.length === 0) {
+        return res.status(400).json({
+          status: 'error',
+          msg: 'No valid wallets to insert',
+          errors,
+        });
+      }
+
+      // 🚀 insert (skip duplicates)
+      const inserted = await Wallet.insertMany(validWallets, {
+        ordered: false,
+      });
+
+      return res.status(201).json({
+        status: 'success',
+        msg: 'Bulk operation completed',
+        insertedCount: inserted.length,
+        skippedCount: validWallets.length - inserted.length,
+        errors,
+      });
+    }
+
+    // =========================
+    // ✅ SINGLE INSERT
+    // =========================
+    let { wallet, status } = data;
 
     if (!wallet) {
       return res.status(400).json({
@@ -22,7 +91,6 @@ module.exports.addWallet = async (req, res) => {
 
     const normalizedWallet = normalize(wallet);
 
-    // ✅ validation (same as frontend)
     if (!isValidWallet(normalizedWallet)) {
       return res.status(400).json({
         status: 'error',
@@ -30,8 +98,6 @@ module.exports.addWallet = async (req, res) => {
       });
     }
 
-    // optional: validate status
-    const allowedStatus = ['gtd', 'fcfs', 'none'];
     if (status && !allowedStatus.includes(status)) {
       return res.status(400).json({
         status: 'error',
@@ -39,7 +105,6 @@ module.exports.addWallet = async (req, res) => {
       });
     }
 
-    // 🔍 check existing
     const existing = await Wallet.findOne({ wallet: normalizedWallet });
 
     if (existing) {
@@ -49,7 +114,6 @@ module.exports.addWallet = async (req, res) => {
       });
     }
 
-    // ✅ create
     const newWallet = await Wallet.create({
       wallet: normalizedWallet,
       status: status || 'none',
@@ -63,13 +127,20 @@ module.exports.addWallet = async (req, res) => {
   } catch (err) {
     console.error('Add wallet error:', err);
 
+    // 🔥 handle duplicate errors silently in bulk
+    if (err.code === 11000) {
+      return res.status(400).json({
+        status: 'error',
+        msg: 'Duplicate wallet detected',
+      });
+    }
+
     return res.status(500).json({
       status: 'error',
       msg: 'Server error',
     });
   }
 };
-
 // =======================
 // 🔍 GET WALLET STATUS
 // =======================
