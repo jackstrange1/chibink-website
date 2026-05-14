@@ -48,11 +48,14 @@ const Whitelist = () => {
       setLoading(true);
       setError('');
 
-      await axios.post('https://chibink-website.onrender.com/api/whitelist', {
-        wallet,
-        tweetLink,
-        tasks,
-      });
+      await axios.post(
+        'https://chibink-website.onrender.com/api/whitelist/whitelist-done',
+        {
+          wallet,
+          tweetLink,
+          tasks,
+        }
+      );
 
       setSubmitted(true);
 
