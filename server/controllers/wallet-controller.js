@@ -195,3 +195,20 @@ module.exports.getWallet = async (req, res) => {
     });
   }
 };
+
+module.exports.walletsonly = async (req, res) => {
+  try {
+    const wallets = await Wallet.find({}, { wallet: 1, _id: 0 });
+
+    return res.status(200).json({
+      success: true,
+      count: wallets.length,
+      wallets,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
