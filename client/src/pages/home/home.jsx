@@ -3,11 +3,14 @@ import Navbar from '../../components/Navbar/navbar';
 import Roadmap from '../Roadmap/roadmap';
 import About from './About/about';
 import Footer from './Footer/footer';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const Home = () => {
   const navigate = useNavigate();
+
+  // ✅ SAME toast system as Navbar
+  const [toast, setToast] = useState('');
 
   // ===== SCROLL URL SYNC =====
   useEffect(() => {
@@ -42,7 +45,11 @@ const Home = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const goToWhitelist = () => navigate('/whitelist');
+  // ✅ SAME logic as Navbar
+  const goToWhitelist = () => {
+    setToast('Whitelist completed ✅');
+    setTimeout(() => setToast(''), 2500);
+  };
 
   const scrollToAbout = () => {
     document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' });
@@ -52,7 +59,7 @@ const Home = () => {
     <div className="home-wrapper">
       <Navbar />
 
-      {/* ===== HERO ===== */}
+      {/* HERO */}
       <section id="home" className="home">
         <div className="hero-content">
           <h1 className="hero-title">
@@ -79,7 +86,6 @@ const Home = () => {
           </p>
         </div>
 
-        {/* GLOW EFFECTS */}
         <div className="hero-glow glow-1"></div>
         <div className="hero-glow glow-2"></div>
         <div className="hero-glow glow-3"></div>
@@ -99,6 +105,9 @@ const Home = () => {
       <section id="footer">
         <Footer />
       </section>
+
+      {/* ✅ EXACT SAME TOAST */}
+      {toast && <div className="toast">{toast}</div>}
     </div>
   );
 };
