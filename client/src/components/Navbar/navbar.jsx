@@ -1,33 +1,89 @@
 import './navbar.css';
 import { useState, useEffect } from 'react';
-import WalletChecker from '../wallet.jsx/wallet';
+import { useNavigate, useLocation } from 'react-router-dom';
+import Wallet from '../Wallet/ wallet';
 
 const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
-  const [walletOpen, setWalletOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [toast, setToast] = useState('');
 
-  const scrollToSection = id => {
-    const el = document.getElementById(id);
-    if (!el) return;
+  const navigate = useNavigate();
+  const location = useLocation();
 
-    const offset = 70;
-    const top = el.offsetTop - offset;
+  const goToPage = path => {
+    navigate(path);
+    setMenuOpen(false);
 
-    window.scrollTo({ top, behavior: 'smooth' });
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  };
+
+  // ==========================================
+  // GO TO ABOUT
+  // ==========================================
+
+  const goToAbout = () => {
+    setMenuOpen(false);
+
+    // If already on Explore
+    if (location.pathname === '/') {
+      document.getElementById('about')?.scrollIntoView({
+        behavior: 'smooth',
+      });
+
+      return;
+    }
+
+    // If on another page, go to Explore first
+    navigate('/');
+
+    setTimeout(() => {
+      document.getElementById('about')?.scrollIntoView({
+        behavior: 'smooth',
+      });
+    }, 150);
+  };
+
+  // ==========================================
+  // BUY YOUR CHIBI
+  // ==========================================
+
+  const handleBuyChibi = () => {
+    window.open(
+      'https://opensea.io/collection/chibink',
+      '_blank',
+      'noopener,noreferrer'
+    );
 
     setMenuOpen(false);
   };
 
+  // ==========================================
+  // DISCORD
+  // ==========================================
+
   const handleDiscord = () => {
     setToast('Discord coming soon 🚧');
-    setTimeout(() => setToast(''), 2500);
+
+    setTimeout(() => {
+      setToast('');
+    }, 2500);
   };
 
+  // ==========================================
+  // X / TWITTER
+  // ==========================================
+
   const handleTwitter = () => {
-    window.open('https://x.com/ChibiOnInk', '_blank');
+    window.open('https://x.com/ChibiOnInk', '_blank', 'noopener,noreferrer');
   };
+
+  // ==========================================
+  // NAVBAR SCROLL
+  // ==========================================
 
   useEffect(() => {
     const handleScroll = () => {
@@ -35,40 +91,87 @@ const Navbar = () => {
     };
 
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
-  // 🔥 LOCK SCROLL WHEN MENU OPEN
+  // ==========================================
+  // LOCK SCROLL WHEN MOBILE MENU IS OPEN
+  // ==========================================
+
   useEffect(() => {
     document.body.style.overflow = menuOpen ? 'hidden' : 'auto';
+
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
   }, [menuOpen]);
 
   return (
     <>
+      {/* ==========================================
+          NAVBAR
+      ========================================== */}
+
       <nav className={`navbar ${scrolled ? 'scrolled' : ''}`}>
         {/* LOGO */}
-        <div className="nav-logo" onClick={() => scrollToSection('home')}>
+
+        <div className="nav-logo" onClick={() => goToPage('/')}>
           <h1>
             <span className="logo-white">CHIBI</span>
+
             <span className="logo-purple">NK</span>
           </h1>
         </div>
 
-        {/* DESKTOP MENU */}
+        {/* ==========================================
+            DESKTOP MENU
+        ========================================== */}
+
         <div className="nav-tools">
-          <p onClick={() => scrollToSection('home')}>HOME</p>
-          <p onClick={() => setWalletOpen(true)}>WALLET</p>
-          <p onClick={() => scrollToSection('about')}>ABOUT</p>
-          <p onClick={() => scrollToSection('roadmap')}>ROADMAP</p>
+          <p
+            className={location.pathname === '/' ? 'active' : ''}
+            onClick={() => goToPage('/')}
+          >
+            EXPLORE
+          </p>
+
+          <p
+            className={location.pathname === '/collections' ? 'active' : ''}
+            onClick={() => goToPage('/collections')}
+          >
+            COLLECTIONS
+          </p>
+
+          <p className="nav-buy-link" onClick={handleBuyChibi}>
+            BUY YOUR CHIBI
+          </p>
+
+          {/* ABOUT */}
+
+          <p className="nav-about-link" onClick={goToAbout}>
+            ABOUT
+          </p>
         </div>
 
-        {/* DESKTOP BUTTONS */}
+        {/* ==========================================
+            DESKTOP BUTTONS
+        ========================================== */}
+
         <div className="nav-btns">
           <button onClick={handleDiscord}>Discord</button>
+
           <button onClick={handleTwitter}>X</button>
+
+          <Wallet />
         </div>
 
-        {/* MOBILE TOGGLE */}
+        {/* ==========================================
+            MOBILE TOGGLE
+        ========================================== */}
+
         <div
           className={`nav-toggle ${menuOpen ? 'open' : ''}`}
           onClick={() => setMenuOpen(!menuOpen)}
@@ -79,30 +182,50 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* MOBILE MENU */}
+      {/* ==========================================
+          MOBILE MENU
+      ========================================== */}
+
       <div className={`mobile-menu ${menuOpen ? 'show' : ''}`}>
-        <p onClick={() => scrollToSection('home')}>HOME</p>
         <p
-          onClick={() => {
-            setWalletOpen(true);
-            setMenuOpen(false);
-          }}
+          className={location.pathname === '/' ? 'active' : ''}
+          onClick={() => goToPage('/')}
         >
-          WALLET
+          EXPLORE
         </p>
-        <p onClick={() => scrollToSection('about')}>ABOUT</p>
-        <p onClick={() => scrollToSection('roadmap')}>ROADMAP</p>
+
+        <p
+          className={location.pathname === '/collections' ? 'active' : ''}
+          onClick={() => goToPage('/collections')}
+        >
+          COLLECTIONS
+        </p>
+
+        <p className="nav-buy-link" onClick={handleBuyChibi}>
+          BUY YOUR CHIBI
+        </p>
+
+        {/* ABOUT */}
+
+        <p className="nav-about-link" onClick={goToAbout}>
+          ABOUT
+        </p>
+
+        {/* MOBILE BUTTONS */}
 
         <div className="mobile-btns">
           <button onClick={handleDiscord}>Discord</button>
+
           <button onClick={handleTwitter}>X</button>
+
+          <Wallet />
         </div>
       </div>
 
-      {/* WALLET MODAL */}
-      <WalletChecker isOpen={walletOpen} onClose={() => setWalletOpen(false)} />
+      {/* ==========================================
+          TOAST
+      ========================================== */}
 
-      {/* TOAST */}
       {toast && <div className="toast">{toast}</div>}
     </>
   );

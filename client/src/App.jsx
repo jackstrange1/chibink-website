@@ -1,9 +1,21 @@
 import './App.css';
 import { Routes, Route } from 'react-router-dom';
 
-import Home from './pages/home/home';
 import ParticleEffect from './components/particles/particles';
-import Whitelist from './pages/Whitelist/whitelist';
+import Explore from './pages/Explore/explore';
+import Collections from './pages/Collections/collections';
+import Collection from './pages/Collection/collection';
+import MostLiked from './pages/Discovery/mostLiked';
+import TopRated from './pages/Discovery/topRated';
+
+const Leaderboard = () => {
+  return (
+    <div>
+      <h1>Leaderboard</h1>
+      <p>INK NFT leaderboard coming soon...</p>
+    </div>
+  );
+};
 
 const App = () => {
   return (
@@ -13,8 +25,20 @@ const App = () => {
 
       {/* ROUTING */}
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/whitelist" element={<Whitelist />} />
+        {/* Main Page */}
+        <Route path="/" element={<Explore />} />
+
+        {/* Explore */}
+        <Route path="/explore" element={<Explore />} />
+
+        {/* Collections */}
+        <Route path="/collections" element={<Collections />} />
+        <Route path="/collections/:slug" element={<Collection />} />
+        <Route path="/discover/liked" element={<MostLiked />} />
+        <Route path="/discover/rated" element={<TopRated />} />
+
+        {/* Leaderboard */}
+        <Route path="/leaderboard" element={<Leaderboard />} />
       </Routes>
     </div>
   );

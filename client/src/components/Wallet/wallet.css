@@ -1,0 +1,130 @@
+/* =========================================================
+   CHIBINK WALLET
+   RainbowKit — Premium INK Dashboard Style
+   ========================================================= */
+
+.wallet-container {
+  display: flex;
+  align-items: center;
+
+  min-width: 0;
+}
+
+/* =========================================================
+   RAINBOWKIT CONNECT BUTTON
+   ========================================================= */
+
+.wallet-container button {
+  min-height: 34px !important;
+
+  padding: 0 14px !important;
+
+  border: 1px solid rgba(139, 92, 246, 0.42) !important;
+  border-radius: 8px !important;
+
+  background: linear-gradient(
+    135deg,
+    rgba(124, 58, 237, 0.9),
+    rgba(147, 51, 234, 0.9)
+  ) !important;
+
+  color: #ffffff !important;
+
+  font-family: inherit !important;
+
+  font-size: 10px !important;
+  font-weight: 650 !important;
+
+  box-shadow: 0 5px 18px rgba(124, 58, 237, 0.16) !important;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease !important;
+}
+
+/* =========================================================
+   HOVER
+   ========================================================= */
+
+.wallet-container button:hover {
+  background: linear-gradient(135deg, #7c3aed, #a855f7) !important;
+
+  border-color: rgba(192, 132, 252, 0.72) !important;
+
+  transform: translateY(-1px);
+
+  box-shadow: 0 8px 25px rgba(124, 58, 237, 0.28) !important;
+}
+
+/* =========================================================
+   CONNECTED ACCOUNT
+   ========================================================= */
+
+.wallet-container [data-testid='rk-account-button'] {
+  min-height: 34px !important;
+
+  background: rgba(15, 23, 42, 0.72) !important;
+
+  border: 1px solid rgba(139, 92, 246, 0.42) !important;
+
+  color: #f8fafc !important;
+
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+.wallet-container [data-testid='rk-account-button']:hover {
+  background: rgba(30, 41, 59, 0.85) !important;
+
+  border-color: rgba(168, 85, 247, 0.68) !important;
+}
+
+/* =========================================================
+   WALLET TEXT
+   ========================================================= */
+
+.wallet-container button span {
+  font-family: inherit !important;
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 768px) {
+  .wallet-container {
+    width: 100%;
+
+    display: flex;
+    justify-content: center;
+  }
+
+  .wallet-container button {
+    width: 100% !important;
+
+    min-height: 40px !important;
+
+    justify-content: center !important;
+
+    font-size: 11px !important;
+  }
+
+  .wallet-container [data-testid='rk-account-button'] {
+    width: 100% !important;
+
+    justify-content: center !important;
+  }
+}
+
+/* =========================================================
+   SMALL MOBILE
+   ========================================================= */
+
+@media (max-width: 400px) {
+  .wallet-container button {
+    min-height: 38px !important;
+
+    font-size: 10px !important;
+  }
+}
