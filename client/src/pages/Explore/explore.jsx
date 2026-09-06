@@ -37,7 +37,7 @@ const Explore = () => {
         setMostLikedError('');
 
         const response = await axios.get(
-          'http://localhost:3000/api/discovery/most-liked'
+          `${import.meta.env.VITE_API_URL}/discovery/most-liked`
         );
 
         setMostLiked(response.data.nfts || []);
@@ -64,7 +64,7 @@ const Explore = () => {
         setTopRatedError('');
 
         const response = await axios.get(
-          'http://localhost:3000/api/discovery/top-rated'
+          `${import.meta.env.VITE_API_URL}/discovery/top-rated`
         );
 
         setTopRated(response.data.nfts || []);
@@ -91,7 +91,7 @@ const Explore = () => {
         setBiggestSalesError('');
 
         const response = await axios.get(
-          'http://localhost:3000/api/opensea/sales-24h'
+          `${import.meta.env.VITE_API_URL}/opensea/sales-24h`
         );
 
         setBiggestSales(response.data.events || []);
@@ -118,7 +118,7 @@ const Explore = () => {
         setFloorUpError('');
 
         const response = await axios.get(
-          'http://localhost:3000/api/opensea/floor-up-24h'
+          `${import.meta.env.VITE_API_URL}/opensea/floor-up-24h`
         );
 
         setFloorUp(response.data.collections || []);

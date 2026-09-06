@@ -22,7 +22,7 @@ const TopRated = () => {
         setError('');
 
         const response = await axios.get(
-          'http://localhost:3000/api/discovery/top-rated'
+          `${import.meta.env.VITE_API_URL}/discovery/top-rated`
         );
 
         setNfts(response.data.nfts || []);

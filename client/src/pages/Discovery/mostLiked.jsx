@@ -22,7 +22,7 @@ const MostLiked = () => {
         setError('');
 
         const response = await axios.get(
-          'http://localhost:3000/api/discovery/most-liked'
+          `${import.meta.env.VITE_API_URL}/discovery/most-liked`
         );
 
         setNfts(response.data.nfts || []);

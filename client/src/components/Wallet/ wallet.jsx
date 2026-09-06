@@ -44,7 +44,7 @@ const Wallet = () => {
         try {
           // Get nonce from backend
           const nonceResponse = await axios.post(
-            'http://localhost:3000/api/wallet/nonce',
+            `${import.meta.env.VITE_API_URL}/wallet/nonce`,
             {
               walletAddress: address,
             }
@@ -63,7 +63,7 @@ const Wallet = () => {
           // Send signature to backend
           // for verification
           const verifyResponse = await axios.post(
-            'http://localhost:3000/api/wallet/verify',
+            `${import.meta.env.VITE_API_URL}/wallet/verify`,
             {
               walletAddress: address,
               signature,

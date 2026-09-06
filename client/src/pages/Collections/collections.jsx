@@ -46,7 +46,7 @@ const Collections = () => {
       }
 
       const response = await axios.get(
-        'http://localhost:3000/api/opensea/search',
+        `${import.meta.env.VITE_API_URL}/opensea/search`,
         {
           params,
         }
