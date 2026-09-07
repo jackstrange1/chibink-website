@@ -238,6 +238,50 @@
 }
 
 /* =========================================================
+   CHIBI POINTS
+   ========================================================= */
+
+.chibi-points {
+  min-height: 34px;
+
+  padding: 0 12px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid rgba(139, 92, 246, 0.28);
+
+  border-radius: 8px;
+
+  background: rgba(139, 92, 246, 0.08);
+
+  color: #d8c7ff;
+
+  font-size: 10px;
+  font-weight: 700;
+
+  letter-spacing: 0.02em;
+
+  white-space: nowrap;
+
+  box-sizing: border-box;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.chibi-points:hover {
+  background: rgba(139, 92, 246, 0.13);
+
+  border-color: rgba(168, 85, 247, 0.45);
+
+  box-shadow: 0 0 18px rgba(139, 92, 246, 0.12);
+}
+
+/* =========================================================
    DISCORD
    ========================================================= */
 
@@ -494,6 +538,20 @@
     transform 0.2s ease;
 }
 
+/* =========================================================
+   MOBILE POINTS
+   ========================================================= */
+
+.mobile-btns .chibi-points {
+  min-height: 38px;
+
+  padding: 0 14px;
+
+  font-size: 11px;
+
+  border-radius: 9px;
+}
+
 .mobile-btns button:first-child {
   background: linear-gradient(135deg, #7c3aed, #9333ea);
 
@@ -664,5 +722,10 @@
 
   .mobile-btns button {
     padding: 0 15px;
+  }
+
+  .mobile-btns .chibi-points {
+    padding: 0 11px;
+    font-size: 10px;
   }
 }

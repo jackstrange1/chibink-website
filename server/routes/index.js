@@ -14,6 +14,7 @@ const likeRoutes = require('./like');
 
 const commentRoutes = require('./comment');
 const discoveryRoutes = require('./discovery');
+const chibiPointsRoutes = require('./chibiPoints');
 
 // cleaner: no /api here
 
@@ -29,5 +30,6 @@ router.use('/like', likeRoutes);
 
 router.use('/comment', commentRoutes);
 router.use('/discovery', discoveryRoutes);
+router.use('/chibi-points', chibiPointsRoutes);
 
 module.exports = router;

@@ -7,6 +7,7 @@ const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [toast, setToast] = useState('');
+  const [points, setPoints] = useState(0);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -98,6 +99,47 @@ const Navbar = () => {
   }, []);
 
   // ==========================================
+  // FETCH CHIBI POINTS
+  // ==========================================
+
+  useEffect(() => {
+    const fetchPoints = async () => {
+      try {
+        const token = localStorage.getItem('chibink_auth_token');
+
+        if (!token) {
+          setPoints(0);
+          return;
+        }
+
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/chibi-points`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          setPoints(0);
+          return;
+        }
+
+        const data = await response.json();
+
+        setPoints(data.points || 0);
+      } catch (error) {
+        console.error('Failed to fetch Chibi Points:', error);
+
+        setPoints(0);
+      }
+    };
+
+    fetchPoints();
+  }, []);
+
+  // ==========================================
   // LOCK SCROLL WHEN MOBILE MENU IS OPEN
   // ==========================================
 
@@ -161,6 +203,8 @@ const Navbar = () => {
         ========================================== */}
 
         <div className="nav-btns">
+          <div className="chibi-points">⭐ {points} POINTS</div>
+
           <button onClick={handleDiscord}>Discord</button>
 
           <button onClick={handleTwitter}>X</button>
@@ -214,6 +258,8 @@ const Navbar = () => {
         {/* MOBILE BUTTONS */}
 
         <div className="mobile-btns">
+          <div className="chibi-points">⭐ {points} POINTS</div>
+
           <button onClick={handleDiscord}>Discord</button>
 
           <button onClick={handleTwitter}>X</button>

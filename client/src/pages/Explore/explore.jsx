@@ -1,34 +1,42 @@
 import './explore.css';
 import Navbar from '../../components/Navbar/navbar';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+
+const API_URL = import.meta.env.VITE_API_URL;
+
+// =====================================================
+// EXPLORE LIMIT
+//
+// 8 cards per row × 2 rows = 16 slots.
+//
+// If there are more than 16 NFTs:
+// 15 NFTs + 1 View All card = 16 slots.
+// =====================================================
+
+const EXPLORE_NFT_LIMIT = 16;
 
 const Explore = () => {
   const navigate = useNavigate();
 
   const [mostLiked, setMostLiked] = useState([]);
   const [topRated, setTopRated] = useState([]);
-  const [biggestSales, setBiggestSales] = useState([]);
-  const [floorUp, setFloorUp] = useState([]);
 
+  // Trending is the default view
   const [activeFilter, setActiveFilter] = useState('trending');
 
-  const [floorUpLoading, setFloorUpLoading] = useState(true);
-  const [floorUpError, setFloorUpError] = useState('');
-
   const [mostLikedLoading, setMostLikedLoading] = useState(true);
+
   const [topRatedLoading, setTopRatedLoading] = useState(true);
 
-  const [biggestSalesLoading, setBiggestSalesLoading] = useState(true);
-  const [biggestSalesError, setBiggestSalesError] = useState('');
-
   const [mostLikedError, setMostLikedError] = useState('');
+
   const [topRatedError, setTopRatedError] = useState('');
 
-  // ==========================================
+  // =====================================================
   // FETCH MOST LIKED NFTs
-  // ==========================================
+  // =====================================================
 
   useEffect(() => {
     const fetchMostLiked = async () => {
@@ -36,9 +44,7 @@ const Explore = () => {
         setMostLikedLoading(true);
         setMostLikedError('');
 
-        const response = await axios.get(
-          `${import.meta.env.VITE_API_URL}/discovery/most-liked`
-        );
+        const response = await axios.get(`${API_URL}/discovery/most-liked`);
 
         setMostLiked(response.data.nfts || []);
       } catch (error) {
@@ -53,9 +59,9 @@ const Explore = () => {
     fetchMostLiked();
   }, []);
 
-  // ==========================================
+  // =====================================================
   // FETCH TOP RATED NFTs
-  // ==========================================
+  // =====================================================
 
   useEffect(() => {
     const fetchTopRated = async () => {
@@ -63,9 +69,7 @@ const Explore = () => {
         setTopRatedLoading(true);
         setTopRatedError('');
 
-        const response = await axios.get(
-          `${import.meta.env.VITE_API_URL}/discovery/top-rated`
-        );
+        const response = await axios.get(`${API_URL}/discovery/top-rated`);
 
         setTopRated(response.data.nfts || []);
       } catch (error) {
@@ -80,71 +84,21 @@ const Explore = () => {
     fetchTopRated();
   }, []);
 
-  // ==========================================
-  // FETCH BIGGEST SALES
-  // ==========================================
-
-  useEffect(() => {
-    const fetchBiggestSales = async () => {
-      try {
-        setBiggestSalesLoading(true);
-        setBiggestSalesError('');
-
-        const response = await axios.get(
-          `${import.meta.env.VITE_API_URL}/opensea/sales-24h`
-        );
-
-        setBiggestSales(response.data.events || []);
-      } catch (error) {
-        console.error('Failed to fetch biggest sales:', error);
-
-        setBiggestSalesError('Failed to load biggest sales');
-      } finally {
-        setBiggestSalesLoading(false);
-      }
-    };
-
-    fetchBiggestSales();
-  }, []);
-
-  // ==========================================
-  // FETCH FLOOR UP — LAST 24H
-  // ==========================================
-
-  useEffect(() => {
-    const fetchFloorUp = async () => {
-      try {
-        setFloorUpLoading(true);
-        setFloorUpError('');
-
-        const response = await axios.get(
-          `${import.meta.env.VITE_API_URL}/opensea/floor-up-24h`
-        );
-
-        setFloorUp(response.data.collections || []);
-      } catch (error) {
-        console.error('Failed to fetch floor up collections:', error);
-
-        setFloorUpError('Failed to load floor up collections');
-      } finally {
-        setFloorUpLoading(false);
-      }
-    };
-
-    fetchFloorUp();
-  }, []);
-
-  // ==========================================
+  // =====================================================
   // OPEN COLLECTION
-  // ==========================================
+  // =====================================================
 
   const openCollection = collectionSlug => {
+    if (!collectionSlug) {
+      return;
+    }
+
     navigate(`/collections/${collectionSlug}`);
   };
 
-  // ==========================================
+  // =====================================================
   // VIEW ALL
-  // ==========================================
+  // =====================================================
 
   const openMostLiked = () => {
     navigate('/discover/liked');
@@ -154,28 +108,178 @@ const Explore = () => {
     navigate('/discover/rated');
   };
 
-  // ==========================================
-  // FILTERED DISCOVERY NFTs
-  // ==========================================
+  // =====================================================
+  // TRENDING SCORE
+  //
+  // Likes = 50%
+  // Rating = 50%
+  // =====================================================
 
-  const trendingNFTs = [
-    ...mostLiked,
-    ...topRated.filter(
-      ratedNFT =>
-        !mostLiked.some(
-          likedNFT =>
-            likedNFT.contractAddress === ratedNFT.contractAddress &&
-            likedNFT.tokenId === ratedNFT.tokenId
-        )
-    ),
-  ];
+  const trendingNFTs = useMemo(() => {
+    const nftMap = new Map();
+
+    // -------------------------------------------------
+    // Add Most Liked NFTs
+    // -------------------------------------------------
+
+    mostLiked.forEach(nft => {
+      const key = `${nft.contractAddress}-${nft.tokenId}`;
+
+      nftMap.set(key, {
+        ...nft,
+      });
+    });
+
+    // -------------------------------------------------
+    // Merge Top Rated NFTs
+    // -------------------------------------------------
+
+    topRated.forEach(nft => {
+      const key = `${nft.contractAddress}-${nft.tokenId}`;
+
+      const existing = nftMap.get(key);
+
+      if (existing) {
+        nftMap.set(key, {
+          ...existing,
+          ...nft,
+
+          likeCount:
+            typeof nft.likeCount === 'number'
+              ? nft.likeCount
+              : existing.likeCount || 0,
+
+          averageRating:
+            typeof nft.averageRating === 'number'
+              ? nft.averageRating
+              : existing.averageRating || 0,
+
+          ratingCount:
+            typeof nft.ratingCount === 'number'
+              ? nft.ratingCount
+              : existing.ratingCount || 0,
+
+          image: nft.image || existing.image,
+
+          name: nft.name || existing.name,
+
+          collection: nft.collection || existing.collection,
+
+          collectionSlug: nft.collectionSlug || existing.collectionSlug,
+
+          openseaUrl: nft.openseaUrl || existing.openseaUrl,
+        });
+      } else {
+        nftMap.set(key, {
+          ...nft,
+        });
+      }
+    });
+
+    const combinedNFTs = Array.from(nftMap.values());
+
+    // -------------------------------------------------
+    // Find highest like count
+    // -------------------------------------------------
+
+    const highestLikeCount = Math.max(
+      ...combinedNFTs.map(nft => nft.likeCount || 0),
+      1
+    );
+
+    // -------------------------------------------------
+    // Calculate Trending Score
+    // -------------------------------------------------
+
+    return combinedNFTs
+      .map(nft => {
+        const likeCount = Number(nft.likeCount) || 0;
+
+        const averageRating = Number(nft.averageRating) || 0;
+
+        const likePercentage = (likeCount / highestLikeCount) * 100;
+
+        const ratingPercentage = Math.min(
+          Math.max((averageRating / 5) * 100, 0),
+          100
+        );
+
+        const trendingScore = likePercentage * 0.5 + ratingPercentage * 0.5;
+
+        return {
+          ...nft,
+          likePercentage,
+          ratingPercentage,
+          trendingScore,
+        };
+      })
+      .sort((a, b) => b.trendingScore - a.trendingScore);
+  }, [mostLiked, topRated]);
+
+  // =====================================================
+  // MOST LIKED SORTING
+  // =====================================================
+
+  const sortedMostLiked = useMemo(() => {
+    return [...mostLiked].sort(
+      (a, b) => (Number(b.likeCount) || 0) - (Number(a.likeCount) || 0)
+    );
+  }, [mostLiked]);
+
+  // =====================================================
+  // TOP RATED SORTING
+  // =====================================================
+
+  const sortedTopRated = useMemo(() => {
+    return [...topRated].sort((a, b) => {
+      const ratingDifference =
+        (Number(b.averageRating) || 0) - (Number(a.averageRating) || 0);
+
+      if (ratingDifference !== 0) {
+        return ratingDifference;
+      }
+
+      return (Number(b.ratingCount) || 0) - (Number(a.ratingCount) || 0);
+    });
+  }, [topRated]);
+
+  // =====================================================
+  // ACTIVE DATASET
+  // =====================================================
 
   const filteredNFTs =
     activeFilter === 'liked'
-      ? mostLiked
+      ? sortedMostLiked
       : activeFilter === 'rated'
-        ? topRated
+        ? sortedTopRated
         : trendingNFTs;
+
+  // =====================================================
+  // VIEW ALL REQUIRED?
+  //
+  // If there are more than 16 NFTs,
+  // reserve the 16th slot for View All.
+  //
+  // Therefore:
+  //
+  // 16 NFTs or less:
+  //     show all NFTs
+  //
+  // 17+ NFTs:
+  //     show 15 NFTs + View All
+  // =====================================================
+
+  const shouldShowViewAll = filteredNFTs.length > EXPLORE_NFT_LIMIT;
+
+  const nftDisplayLimit = shouldShowViewAll
+    ? EXPLORE_NFT_LIMIT - 1
+    : EXPLORE_NFT_LIMIT;
+
+  const displayedNFTs = filteredNFTs.slice(0, nftDisplayLimit);
+
+  // =====================================================
+  // LOADING
+  // =====================================================
 
   const filteredLoading =
     activeFilter === 'liked'
@@ -184,12 +288,22 @@ const Explore = () => {
         ? topRatedLoading
         : mostLikedLoading || topRatedLoading;
 
+  // =====================================================
+  // ERROR
+  // =====================================================
+
   const filteredError =
     activeFilter === 'liked'
       ? mostLikedError
       : activeFilter === 'rated'
         ? topRatedError
-        : mostLikedError || topRatedError;
+        : mostLikedError && topRatedError
+          ? `${mostLikedError}. ${topRatedError}`
+          : mostLikedError || topRatedError;
+
+  // =====================================================
+  // TITLE
+  // =====================================================
 
   const filteredTitle =
     activeFilter === 'liked'
@@ -198,20 +312,48 @@ const Explore = () => {
         ? '⭐ Top Rated NFTs'
         : '🔥 Trending NFTs';
 
+  // =====================================================
+  // DESCRIPTION
+  // =====================================================
+
   const filteredDescription =
     activeFilter === 'liked'
-      ? 'The most liked NFTs from the INK community.'
+      ? 'The NFTs getting the most love from the INK community.'
       : activeFilter === 'rated'
-        ? 'NFTs with the highest community ratings.'
-        : 'Discover trending NFTs across the INK ecosystem.';
+        ? 'NFTs receiving the highest ratings from the INK community.'
+        : 'A community-driven mix of likes and ratings across the INK ecosystem.';
+
+  // =====================================================
+  // VIEW ALL HANDLER
+  // =====================================================
+
+  const handleViewAll = () => {
+    if (activeFilter === 'liked') {
+      openMostLiked();
+      return;
+    }
+
+    if (activeFilter === 'rated') {
+      openTopRated();
+      return;
+    }
+
+    // There is currently no dedicated trending route.
+    // Use Most Liked as the existing discovery page.
+    openMostLiked();
+  };
+
+  // =====================================================
+  // RENDER
+  // =====================================================
 
   return (
     <main className="explore-page">
       <Navbar />
 
-      {/* ==========================================
+      {/* =================================================
           HERO
-      ========================================== */}
+      ================================================= */}
 
       <section className="explore-hero-section explore-hero-compact">
         <div className="explore-header">
@@ -222,228 +364,62 @@ const Explore = () => {
           </h1>
 
           <p className="explore-description">
-            Explore the most exciting NFTs from the INK ecosystem, discover
-            trending artwork, top rated NFTs, and more.
+            Discover the NFTs getting attention from the INK community through
+            likes, ratings and community activity.
           </p>
         </div>
       </section>
 
-      {/* ==========================================
+      {/* =================================================
           FILTERS
-      ========================================== */}
+      ================================================= */}
 
       <section className="explore-controls explore-controls-compact">
         <div className="explore-filters">
+          {/* TRENDING */}
+
           <button
             className={`filter-btn ${
               activeFilter === 'trending' ? 'active' : ''
             }`}
             onClick={() => setActiveFilter('trending')}
           >
-            Trending
+            <span>Trending</span>
+
+            <span className="filter-count">{trendingNFTs.length}</span>
           </button>
+
+          {/* MOST LIKED */}
 
           <button
             className={`filter-btn ${activeFilter === 'liked' ? 'active' : ''}`}
             onClick={() => setActiveFilter('liked')}
           >
-            Most Liked
+            <span>Most Liked</span>
+
+            <span className="filter-count">{mostLiked.length}</span>
           </button>
+
+          {/* TOP RATED */}
 
           <button
             className={`filter-btn ${activeFilter === 'rated' ? 'active' : ''}`}
             onClick={() => setActiveFilter('rated')}
           >
-            Top Rated
+            <span>Top Rated</span>
+
+            <span className="filter-count">{topRated.length}</span>
           </button>
         </div>
       </section>
 
-      {/* ==========================================
-          MARKET DASHBOARD
-      ========================================== */}
-
-      <div className="market-dashboard-row compact-market-row">
-        {/* ==========================================
-            BIGGEST SALES — LAST 24H
-        ========================================== */}
-
-        <section className="nft-section discovery-section biggest-sales-section compact-discovery-section">
-          <div className="nft-section-header compact-section-header">
-            <div>
-              <h2>💰 Biggest Sales — Last 24H</h2>
-
-              <p>The biggest NFT sales across the INK ecosystem.</p>
-            </div>
-
-            {!biggestSalesLoading && !biggestSalesError && (
-              <span className="nft-count">{biggestSales.length} Sales</span>
-            )}
-          </div>
-
-          {biggestSalesLoading && (
-            <div className="explore-message compact-message">
-              Loading biggest sales...
-            </div>
-          )}
-
-          {!biggestSalesLoading && biggestSalesError && (
-            <div className="explore-message compact-message">
-              {biggestSalesError}
-            </div>
-          )}
-
-          {!biggestSalesLoading &&
-            !biggestSalesError &&
-            biggestSales.length > 0 && (
-              <div className="nft-grid biggest-sales-grid compact-nft-grid">
-                {biggestSales.map(event => (
-                  <article
-                    className="nft-card discovery-card compact-nft-card"
-                    key={event.eventId || event.id}
-                  >
-                    <div className="nft-image-wrapper compact-image-wrapper">
-                      {event.nft?.image_url ? (
-                        <img
-                          src={event.nft.image_url}
-                          alt={event.nft.name || `NFT #${event.nft.identifier}`}
-                          className="nft-image"
-                        />
-                      ) : (
-                        <div className="nft-image-placeholder">INK</div>
-                      )}
-                    </div>
-
-                    <div className="nft-info compact-nft-info">
-                      <div className="nft-title-row">
-                        <div>
-                          <h3>
-                            {event.nft?.name || `#${event.nft?.identifier}`}
-                          </h3>
-
-                          <p>
-                            {event.collection?.name ||
-                              event.collection?.slug ||
-                              'INK Collection'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="discovery-stat-row">
-                        <div className="discovery-stat">
-                          <span className="discovery-stat-icon">◆</span>
-
-                          <strong>{event.saleValue}</strong>
-
-                          <span className="discovery-stat-label">
-                            {event.saleCurrency}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="interaction-hint">
-                        <span>View NFT on OpenSea</span>
-
-                        <span className="interaction-arrow">→</span>
-                      </div>
-
-                      {event.nft?.opensea_url && (
-                        <button
-                          className="opensea-btn"
-                          type="button"
-                          onClick={clickEvent => {
-                            clickEvent.stopPropagation();
-
-                            window.open(event.nft.opensea_url, '_blank');
-                          }}
-                        >
-                          View on OpenSea
-                          <span>↗</span>
-                        </button>
-                      )}
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-
-          {!biggestSalesLoading &&
-            !biggestSalesError &&
-            biggestSales.length === 0 && (
-              <div className="explore-message compact-message">
-                No sales found in the last 24 hours.
-              </div>
-            )}
-        </section>
-
-        {/* ==========================================
-            FLOOR UP — LAST 24H
-        ========================================== */}
-
-        <section className="nft-section discovery-section floor-up-section compact-discovery-section">
-          <div className="nft-section-header compact-section-header">
-            <div>
-              <h2>📈 Floor Up — Last 24H</h2>
-
-              <p>INK collections with the biggest floor price increases.</p>
-            </div>
-
-            {!floorUpLoading && !floorUpError && (
-              <span className="nft-count">{floorUp.length} Collections</span>
-            )}
-          </div>
-
-          {floorUpLoading && (
-            <div className="explore-message compact-message">
-              Loading floor movement...
-            </div>
-          )}
-
-          {!floorUpLoading && floorUpError && (
-            <div className="explore-message compact-message">
-              {floorUpError}
-            </div>
-          )}
-
-          {!floorUpLoading && !floorUpError && floorUp.length > 0 && (
-            <div className="floor-up-list compact-floor-list">
-              {floorUp.map(collection => (
-                <article
-                  className="floor-up-card compact-floor-card"
-                  key={collection.slug}
-                  onClick={() => navigate(`/collections/${collection.slug}`)}
-                >
-                  <div>
-                    <h3>{collection.name}</h3>
-
-                    <p>
-                      Floor: {collection.currentFloor} {collection.currency}
-                    </p>
-                  </div>
-
-                  <div className="floor-up-change">
-                    <strong>+{collection.changePercent.toFixed(2)}%</strong>
-
-                    <span>24H</span>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-
-          {!floorUpLoading && !floorUpError && floorUp.length === 0 && (
-            <div className="explore-message compact-message">
-              No collections have increased their floor in the last 24 hours.
-            </div>
-          )}
-        </section>
-      </div>
-
-      {/* ==========================================
-          FILTERED DISCOVERY NFTs
-      ========================================== */}
+      {/* =================================================
+          COMMUNITY DISCOVERY
+      ================================================= */}
 
       <section className="nft-section discovery-section filtered-discovery-section compact-discovery-section">
+        {/* HEADER */}
+
         <div className="nft-section-header compact-section-header">
           <div>
             <h2>{filteredTitle}</h2>
@@ -452,37 +428,64 @@ const Explore = () => {
           </div>
 
           {!filteredLoading && !filteredError && (
-            <span className="nft-count">{filteredNFTs.length} NFTs</span>
+            <span className="nft-count">
+              {filteredNFTs.length > EXPLORE_NFT_LIMIT
+                ? `Showing ${displayedNFTs.length} + View All`
+                : `Showing ${displayedNFTs.length}`}{' '}
+              NFTs
+            </span>
           )}
         </div>
+
+        {/* =================================================
+            LOADING
+        ================================================= */}
 
         {filteredLoading && (
           <div className="explore-message compact-message">Loading NFTs...</div>
         )}
 
+        {/* =================================================
+            ERROR
+        ================================================= */}
+
         {!filteredLoading && filteredError && (
           <div className="explore-message compact-message">{filteredError}</div>
         )}
 
-        {!filteredLoading && !filteredError && filteredNFTs.length > 0 && (
+        {/* =================================================
+            NFT GRID
+        ================================================= */}
+
+        {!filteredLoading && !filteredError && displayedNFTs.length > 0 && (
           <div className="nft-grid filtered-nft-grid compact-nft-grid">
-            {filteredNFTs.slice(0, 8).map(nft => (
+            {/* =================================================
+                NFT CARDS
+            ================================================= */}
+
+            {displayedNFTs.map(nft => (
               <article
                 className="nft-card discovery-card compact-nft-card"
                 key={`${nft.contractAddress}-${nft.tokenId}`}
                 onClick={() => openCollection(nft.collectionSlug)}
               >
+                {/* IMAGE */}
+
                 <div className="nft-image-wrapper compact-image-wrapper">
                   {nft.image ? (
                     <img
                       src={nft.image}
                       alt={nft.name || `NFT #${nft.tokenId}`}
                       className="nft-image"
+                      loading="lazy"
+                      decoding="async"
                     />
                   ) : (
                     <div className="nft-image-placeholder">INK</div>
                   )}
                 </div>
+
+                {/* INFO */}
 
                 <div className="nft-info compact-nft-info">
                   <div className="nft-title-row">
@@ -493,9 +496,35 @@ const Explore = () => {
                     </div>
                   </div>
 
-                  {/* LIKE INFORMATION */}
+                  {/* TRENDING STATS */}
 
-                  {activeFilter !== 'rated' && (
+                  {activeFilter === 'trending' && (
+                    <div className="discovery-stat-row">
+                      <div className="discovery-stat like-stat">
+                        <span className="discovery-stat-icon">♥</span>
+
+                        <strong>{nft.likeCount || 0}</strong>
+
+                        <span className="discovery-stat-label">Likes</span>
+                      </div>
+
+                      <div className="discovery-stat rating-stat">
+                        <span className="discovery-stat-icon">★</span>
+
+                        <strong>
+                          {typeof nft.averageRating === 'number'
+                            ? nft.averageRating.toFixed(1)
+                            : '0.0'}
+                        </strong>
+
+                        <span className="discovery-stat-label">Rating</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* MOST LIKED STATS */}
+
+                  {activeFilter === 'liked' && (
                     <div className="discovery-stat-row">
                       <div className="discovery-stat like-stat">
                         <span className="discovery-stat-icon">♥</span>
@@ -507,7 +536,7 @@ const Explore = () => {
                     </div>
                   )}
 
-                  {/* RATING INFORMATION */}
+                  {/* TOP RATED STATS */}
 
                   {activeFilter === 'rated' && (
                     <div className="discovery-stat-row">
@@ -529,11 +558,15 @@ const Explore = () => {
                     </div>
                   )}
 
+                  {/* INTERACTION */}
+
                   <div className="interaction-hint">
                     <span>Click to view & interact</span>
 
                     <span className="interaction-arrow">→</span>
                   </div>
+
+                  {/* OPENSEA */}
 
                   {nft.openseaUrl && (
                     <button
@@ -553,57 +586,50 @@ const Explore = () => {
               </article>
             ))}
 
-            {/* VIEW ALL */}
+            {/* =================================================
+                VIEW ALL
+                IMPORTANT:
 
-            {activeFilter === 'liked' && (
+                This comes AFTER 15 NFTs when there are
+                more than 16 items.
+
+                Therefore:
+                15 NFTs + View All = 16 grid slots.
+            ================================================= */}
+
+            {shouldShowViewAll && (
               <article
                 className="discovery-view-all-card"
-                onClick={openMostLiked}
+                onClick={handleViewAll}
               >
                 <div className="view-all-icon">→</div>
 
                 <h3>View All</h3>
 
-                <p>Explore all most liked NFTs</p>
-              </article>
-            )}
-
-            {activeFilter === 'rated' && (
-              <article
-                className="discovery-view-all-card"
-                onClick={openTopRated}
-              >
-                <div className="view-all-icon">→</div>
-
-                <h3>View All</h3>
-
-                <p>Explore all top rated NFTs</p>
-              </article>
-            )}
-
-            {activeFilter === 'trending' && (
-              <article
-                className="discovery-view-all-card"
-                onClick={openMostLiked}
-              >
-                <div className="view-all-icon">→</div>
-
-                <h3>View All</h3>
-
-                <p>Explore trending NFTs</p>
+                <p>
+                  {activeFilter === 'liked'
+                    ? `Explore all ${filteredNFTs.length} most liked NFTs`
+                    : activeFilter === 'rated'
+                      ? `Explore all ${filteredNFTs.length} top rated NFTs`
+                      : `Explore all ${filteredNFTs.length} trending NFTs`}
+                </p>
               </article>
             )}
           </div>
         )}
+
+        {/* =================================================
+            EMPTY
+        ================================================= */}
 
         {!filteredLoading && !filteredError && filteredNFTs.length === 0 && (
           <div className="explore-message compact-message">No NFTs found.</div>
         )}
       </section>
 
-      {/* ==========================================
+      {/* =================================================
           ABOUT CHIBINK
-      ========================================== */}
+      ================================================= */}
 
       <section id="about" className="explore-about-section">
         <div className="explore-about-container">
@@ -667,9 +693,9 @@ const Explore = () => {
         </div>
       </section>
 
-      {/* ==========================================
+      {/* =================================================
           FOOTER
-      ========================================== */}
+      ================================================= */}
 
       <footer className="explore-footer">
         <div className="explore-footer-main">

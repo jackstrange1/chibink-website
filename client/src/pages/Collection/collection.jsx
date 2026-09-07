@@ -7,13 +7,15 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+const INITIAL_NFT_LIMIT = 10;
+
 const Collection = () => {
   const { slug } = useParams();
   const { address } = useAccount();
 
   const [collectionDetails, setCollectionDetails] = useState(null);
 
-  // Initial collection NFTs
+  // Initial NFTs
   const [initialNfts, setInitialNfts] = useState([]);
   const [nfts, setNfts] = useState([]);
 
@@ -65,7 +67,7 @@ const Collection = () => {
   }, [slug]);
 
   // =====================================================
-  // FETCH INITIAL 100 NFTs
+  // FETCH INITIAL 10 NFTs
   // =====================================================
 
   useEffect(() => {
@@ -81,11 +83,16 @@ const Collection = () => {
 
         const fetchedNfts = response.data.nfts || [];
 
-        // Store the original 100 separately
-        setInitialNfts(fetchedNfts);
+        // Only keep first 10 NFTs
+        const limitedNfts = fetchedNfts.slice(0, INITIAL_NFT_LIMIT);
 
-        // Display the original 100
-        setNfts(fetchedNfts);
+        setInitialNfts(limitedNfts);
+        setNfts(limitedNfts);
+
+        // Reset interaction data when changing collection
+        setRatings({});
+        setLikes({});
+        setComments({});
       } catch (error) {
         console.error('Failed to fetch NFTs:', error);
 
@@ -115,7 +122,7 @@ const Collection = () => {
     }
 
     const searchNFT = async () => {
-      // Remove # from the beginning
+      // Remove # from beginning
       const normalizedQuery = query.replace(/^#/, '').trim();
 
       // Only allow token IDs
@@ -131,7 +138,7 @@ const Collection = () => {
         setSearchLoading(true);
         setSearchError('');
 
-        // Directly request the exact NFT
+        // Request exact NFT
         const response = await axios.get(
           `${API_URL}/opensea/collections/${slug}/nfts/${normalizedQuery}`
         );
@@ -145,7 +152,7 @@ const Collection = () => {
           return;
         }
 
-        // Display only the exact NFT
+        // Display exact NFT
         setNfts([foundNFT]);
       } catch (error) {
         console.error('NFT search error:', error);
@@ -164,7 +171,7 @@ const Collection = () => {
       }
     };
 
-    // Small debounce so we don't request on every keystroke
+    // Small debounce
     const timeout = setTimeout(() => {
       searchNFT();
     }, 400);
@@ -182,7 +189,6 @@ const Collection = () => {
     setSearchLoading(false);
     setNftError('');
 
-    // Restore the original 100 NFTs
     setNfts(initialNfts);
   };
 
@@ -209,13 +215,19 @@ const Collection = () => {
                 return null;
               }
 
-              // Community rating
-              const ratingResponse = await axios.get(
+              // ---------------------------------------------
+              // Rating
+              // ---------------------------------------------
+
+              const ratingPromise = axios.get(
                 `${API_URL}/rating/${slug}/${contractAddress}/${nft.identifier}`
               );
 
-              // Like status + count
-              const likeResponse = await axios.get(
+              // ---------------------------------------------
+              // Like
+              // ---------------------------------------------
+
+              const likePromise = axios.get(
                 `${API_URL}/like/${slug}/${contractAddress}/${nft.identifier}`,
                 token
                   ? {
@@ -226,40 +238,70 @@ const Collection = () => {
                   : undefined
               );
 
+              // ---------------------------------------------
               // Comments
-              const commentResponse = await axios.get(
+              // ---------------------------------------------
+
+              const commentPromise = axios.get(
                 `${API_URL}/comment/${slug}/${contractAddress}/${nft.identifier}`
               );
 
-              // Current user's rating
-              let userRating = null;
+              // ---------------------------------------------
+              // User rating
+              // ---------------------------------------------
+
+              let userRatingPromise = Promise.resolve({
+                data: {
+                  userRating: null,
+                },
+              });
 
               if (token) {
-                try {
-                  const userRatingResponse = await axios.get(
+                userRatingPromise = axios
+                  .get(
                     `${API_URL}/rating/user/${slug}/${contractAddress}/${nft.identifier}`,
                     {
                       headers: {
                         Authorization: `Bearer ${token}`,
                       },
                     }
-                  );
+                  )
+                  .catch(error => {
+                    console.error(
+                      `Failed to load user rating for NFT ${nft.identifier}:`,
+                      error
+                    );
 
-                  userRating = userRatingResponse.data.userRating;
-                } catch (error) {
-                  console.error(
-                    `Failed to load user rating for NFT ${nft.identifier}:`,
-                    error
-                  );
-                }
+                    return {
+                      data: {
+                        userRating: null,
+                      },
+                    };
+                  });
               }
+
+              // ---------------------------------------------
+              // Run ALL requests simultaneously
+              // ---------------------------------------------
+
+              const [
+                ratingResponse,
+                likeResponse,
+                commentResponse,
+                userRatingResponse,
+              ] = await Promise.all([
+                ratingPromise,
+                likePromise,
+                commentPromise,
+                userRatingPromise,
+              ]);
 
               return {
                 tokenId: nft.identifier,
 
                 rating: {
                   ...ratingResponse.data,
-                  userRating,
+                  userRating: userRatingResponse.data.userRating,
                 },
 
                 like: likeResponse.data,
@@ -359,6 +401,7 @@ const Collection = () => {
         alert(
           'Your wallet authentication has expired. Please reconnect your wallet.'
         );
+
         return;
       }
 
@@ -428,6 +471,7 @@ const Collection = () => {
         alert(
           'Your wallet authentication has expired. Please reconnect your wallet.'
         );
+
         return;
       }
 
@@ -470,11 +514,13 @@ const Collection = () => {
         alert(
           'Your wallet authentication has expired. Please reconnect your wallet.'
         );
+
         return;
       }
 
       if (error.response?.status === 404) {
         alert('Comment not found or you are not allowed to delete it.');
+
         return;
       }
 
@@ -518,82 +564,143 @@ const Collection = () => {
   };
 
   // =====================================================
-  // TOGGLE LIKE
+  // TOGGLE LIKE - FAST / OPTIMISTIC UI
   // =====================================================
 
   const toggleLike = async nft => {
+    const token = localStorage.getItem('chibink_auth_token');
+
+    if (!token) {
+      alert('Please connect and authenticate your wallet first.');
+      return;
+    }
+
+    const contractAddress =
+      nft.contract || collectionDetails?.contracts?.[0]?.address;
+
+    if (!contractAddress) {
+      return;
+    }
+
+    const tokenId = nft.identifier;
+    const currentLike = likes[tokenId];
+
+    // Prevent double clicks
+    if (currentLike?.updating) {
+      return;
+    }
+
+    const wasLiked = !!currentLike?.liked;
+
+    const previousLike = currentLike || {
+      liked: false,
+      likeCount: 0,
+    };
+
+    // -------------------------------------------------
+    // OPTIMISTIC UPDATE
+    // -------------------------------------------------
+
+    const optimisticLiked = !wasLiked;
+
+    const optimisticLikeCount = Math.max(
+      0,
+      (previousLike.likeCount || 0) + (optimisticLiked ? 1 : -1)
+    );
+
+    setLikes(prev => ({
+      ...prev,
+
+      [tokenId]: {
+        ...previousLike,
+        liked: optimisticLiked,
+        likeCount: optimisticLikeCount,
+        updating: true,
+      },
+    }));
+
     try {
-      const token = localStorage.getItem('chibink_auth_token');
+      let response;
 
-      if (!token) {
-        alert('Please connect and authenticate your wallet first.');
-        return;
-      }
+      // -------------------------------------------------
+      // UNLIKE
+      // -------------------------------------------------
 
-      const contractAddress =
-        nft.contract || collectionDetails?.contracts?.[0]?.address;
-
-      if (!contractAddress) {
-        return;
-      }
-
-      const currentLike = likes[nft.identifier];
-
-      // Unlike
-      if (currentLike?.liked) {
-        const response = await axios.delete(
-          `${API_URL}/like/${slug}/${contractAddress}/${nft.identifier}`,
+      if (wasLiked) {
+        response = await axios.delete(
+          `${API_URL}/like/${slug}/${contractAddress}/${tokenId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
             },
           }
         );
-
-        setLikes(prev => ({
-          ...prev,
-
-          [nft.identifier]: {
-            liked: response.data.liked,
-
-            likeCount: response.data.likeCount,
-          },
-        }));
-
-        return;
       }
 
-      // Like
-      const response = await axios.post(
-        `${API_URL}/like`,
-        {
-          collectionSlug: slug,
-          contractAddress,
-          tokenId: nft.identifier,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
+      // -------------------------------------------------
+      // LIKE
+      // -------------------------------------------------
+      else {
+        response = await axios.post(
+          `${API_URL}/like`,
+          {
+            collectionSlug: slug,
+            contractAddress,
+            tokenId,
           },
-        }
-      );
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+      }
+
+      // -------------------------------------------------
+      // SERVER CONFIRMED
+      // -------------------------------------------------
 
       setLikes(prev => ({
         ...prev,
 
-        [nft.identifier]: {
+        [tokenId]: {
           liked: response.data.liked,
-
           likeCount: response.data.likeCount,
+          updating: false,
         },
       }));
+
+      // Notify Navbar that points may have changed
+      if (!wasLiked && response.data.pointEarned) {
+        window.dispatchEvent(
+          new CustomEvent('chibi-points-updated', {
+            detail: {
+              points: response.data.points,
+            },
+          })
+        );
+      }
     } catch (error) {
       console.error('Like error:', error);
+
+      // -------------------------------------------------
+      // ROLLBACK UI
+      // -------------------------------------------------
+
+      setLikes(prev => ({
+        ...prev,
+
+        [tokenId]: {
+          ...previousLike,
+          updating: false,
+        },
+      }));
 
       if (error.response?.status === 401) {
         alert(
           'Your wallet authentication has expired. Please reconnect your wallet.'
         );
+
         return;
       }
 
@@ -748,9 +855,7 @@ const Collection = () => {
             <p>Explore and rate the NFTs from this collection.</p>
           </div>
 
-          <span className="collection-nft-count">
-            {search ? nfts.length : nfts.length} NFTs
-          </span>
+          <span className="collection-nft-count">{nfts.length} NFTs</span>
         </div>
 
         {/* =================================================
@@ -820,6 +925,8 @@ const Collection = () => {
             {nfts.map(nft => {
               const nftRating = ratings[nft.identifier];
 
+              const nftLike = likes[nft.identifier];
+
               return (
                 <article
                   className="collection-nft-card"
@@ -833,6 +940,8 @@ const Collection = () => {
                         src={nft.display_image_url || nft.image_url}
                         alt={nft.name || `NFT #${nft.identifier}`}
                         className="collection-nft-image"
+                        loading="lazy"
+                        decoding="async"
                       />
                     ) : (
                       <div className="collection-nft-placeholder">INK</div>
@@ -889,13 +998,15 @@ const Collection = () => {
 
                     <button
                       className={
-                        likes[nft.identifier]?.liked
+                        nftLike?.liked
                           ? 'collection-like-button liked'
                           : 'collection-like-button'
                       }
                       onClick={() => toggleLike(nft)}
+                      disabled={nftLike?.updating}
+                      aria-label={nftLike?.liked ? 'Unlike NFT' : 'Like NFT'}
                     >
-                      ♥<span>{likes[nft.identifier]?.likeCount || 0}</span>
+                      ♥<span>{nftLike?.likeCount || 0}</span>
                     </button>
 
                     {/* COMMENTS */}
