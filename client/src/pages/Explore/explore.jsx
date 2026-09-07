@@ -2,6 +2,7 @@ import './explore.css';
 import Navbar from '../../components/Navbar/navbar';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAccount } from 'wagmi';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -15,10 +16,15 @@ const API_URL = import.meta.env.VITE_API_URL;
 // 15 NFTs + 1 View All card = 16 slots.
 // =====================================================
 
-const EXPLORE_NFT_LIMIT = 16;
+const EXPLORE_NFT_LIMIT = 12;
 
 const Explore = () => {
   const navigate = useNavigate();
+  const { address } = useAccount();
+
+  // =====================================================
+  // DISCOVERY DATA
+  // =====================================================
 
   const [mostLiked, setMostLiked] = useState([]);
   const [topRated, setTopRated] = useState([]);
@@ -27,12 +33,20 @@ const Explore = () => {
   const [activeFilter, setActiveFilter] = useState('trending');
 
   const [mostLikedLoading, setMostLikedLoading] = useState(true);
-
   const [topRatedLoading, setTopRatedLoading] = useState(true);
 
   const [mostLikedError, setMostLikedError] = useState('');
-
   const [topRatedError, setTopRatedError] = useState('');
+
+  // =====================================================
+  // NFT INTERACTION DATA
+  // =====================================================
+
+  const [ratings, setRatings] = useState({});
+  const [likes, setLikes] = useState({});
+  const [comments, setComments] = useState({});
+  const [commentInputs, setCommentInputs] = useState({});
+  const [expandedComments, setExpandedComments] = useState({});
 
   // =====================================================
   // FETCH MOST LIKED NFTs
@@ -83,30 +97,6 @@ const Explore = () => {
 
     fetchTopRated();
   }, []);
-
-  // =====================================================
-  // OPEN COLLECTION
-  // =====================================================
-
-  const openCollection = collectionSlug => {
-    if (!collectionSlug) {
-      return;
-    }
-
-    navigate(`/collections/${collectionSlug}`);
-  };
-
-  // =====================================================
-  // VIEW ALL
-  // =====================================================
-
-  const openMostLiked = () => {
-    navigate('/discover/liked');
-  };
-
-  const openTopRated = () => {
-    navigate('/discover/rated');
-  };
 
   // =====================================================
   // TRENDING SCORE
@@ -255,18 +245,13 @@ const Explore = () => {
         : trendingNFTs;
 
   // =====================================================
-  // VIEW ALL REQUIRED?
-  //
-  // If there are more than 16 NFTs,
-  // reserve the 16th slot for View All.
-  //
-  // Therefore:
+  // VIEW ALL
   //
   // 16 NFTs or less:
-  //     show all NFTs
+  // show all NFTs
   //
   // 17+ NFTs:
-  //     show 15 NFTs + View All
+  // show 15 NFTs + View All
   // =====================================================
 
   const shouldShowViewAll = filteredNFTs.length > EXPLORE_NFT_LIMIT;
@@ -324,8 +309,28 @@ const Explore = () => {
         : 'A community-driven mix of likes and ratings across the INK ecosystem.';
 
   // =====================================================
-  // VIEW ALL HANDLER
+  // OPEN COLLECTION
   // =====================================================
+
+  const openCollection = collectionSlug => {
+    if (!collectionSlug) {
+      return;
+    }
+
+    navigate(`/collections/${collectionSlug}`);
+  };
+
+  // =====================================================
+  // VIEW ALL
+  // =====================================================
+
+  const openMostLiked = () => {
+    navigate('/discover/liked');
+  };
+
+  const openTopRated = () => {
+    navigate('/discover/rated');
+  };
 
   const handleViewAll = () => {
     if (activeFilter === 'liked') {
@@ -344,7 +349,588 @@ const Explore = () => {
   };
 
   // =====================================================
-  // RENDER
+  // FETCH RATINGS, LIKES AND COMMENTS
+  //
+  // Uses the same interaction APIs as Collection.jsx.
+  // =====================================================
+
+  useEffect(() => {
+    const loadNFTData = async () => {
+      if (displayedNFTs.length === 0) {
+        return;
+      }
+
+      const token = localStorage.getItem('chibink_auth_token');
+
+      try {
+        const results = await Promise.all(
+          displayedNFTs.map(async nft => {
+            try {
+              const collectionSlug = nft.collectionSlug;
+
+              const contractAddress = nft.contractAddress;
+
+              const tokenId = nft.tokenId;
+
+              if (!collectionSlug || !contractAddress || !tokenId) {
+                return null;
+              }
+
+              // ---------------------------------------------
+              // Rating
+              // ---------------------------------------------
+
+              const ratingPromise = axios.get(
+                `${API_URL}/rating/${collectionSlug}/${contractAddress}/${tokenId}`
+              );
+
+              // ---------------------------------------------
+              // Like
+              // ---------------------------------------------
+
+              const likePromise = axios.get(
+                `${API_URL}/like/${collectionSlug}/${contractAddress}/${tokenId}`,
+                token
+                  ? {
+                      headers: {
+                        Authorization: `Bearer ${token}`,
+                      },
+                    }
+                  : undefined
+              );
+
+              // ---------------------------------------------
+              // Comments
+              // ---------------------------------------------
+
+              const commentPromise = axios.get(
+                `${API_URL}/comment/${collectionSlug}/${contractAddress}/${tokenId}`
+              );
+
+              // ---------------------------------------------
+              // User rating
+              // ---------------------------------------------
+
+              let userRatingPromise = Promise.resolve({
+                data: {
+                  userRating: null,
+                },
+              });
+
+              if (token) {
+                userRatingPromise = axios
+                  .get(
+                    `${API_URL}/rating/user/${collectionSlug}/${contractAddress}/${tokenId}`,
+                    {
+                      headers: {
+                        Authorization: `Bearer ${token}`,
+                      },
+                    }
+                  )
+                  .catch(error => {
+                    console.error(
+                      `Failed to load user rating for NFT ${tokenId}:`,
+                      error
+                    );
+
+                    return {
+                      data: {
+                        userRating: null,
+                      },
+                    };
+                  });
+              }
+
+              // ---------------------------------------------
+              // Run ALL requests simultaneously
+              // ---------------------------------------------
+
+              const [
+                ratingResponse,
+                likeResponse,
+                commentResponse,
+                userRatingResponse,
+              ] = await Promise.all([
+                ratingPromise,
+                likePromise,
+                commentPromise,
+                userRatingPromise,
+              ]);
+
+              return {
+                key: `${contractAddress}-${tokenId}`,
+
+                rating: {
+                  ...ratingResponse.data,
+                  userRating: userRatingResponse.data.userRating,
+                },
+
+                like: likeResponse.data,
+
+                comments: commentResponse.data.comments || [],
+              };
+            } catch (error) {
+              console.error(
+                `Failed to load interaction data for NFT ${nft.tokenId}:`,
+                error
+              );
+
+              return null;
+            }
+          })
+        );
+
+        const ratingMap = {};
+        const likeMap = {};
+        const commentMap = {};
+
+        results.forEach(result => {
+          if (result) {
+            ratingMap[result.key] = result.rating;
+            likeMap[result.key] = result.like;
+            commentMap[result.key] = result.comments;
+          }
+        });
+
+        setRatings(ratingMap);
+        setLikes(likeMap);
+        setComments(commentMap);
+      } catch (error) {
+        console.error('Failed to load Explore interaction data:', error);
+      }
+    };
+
+    loadNFTData();
+  }, [displayedNFTs]);
+
+  // =====================================================
+  // SUBMIT RATING
+  // =====================================================
+
+  const submitRating = async (nft, rating) => {
+    try {
+      const token = localStorage.getItem('chibink_auth_token');
+
+      if (!token) {
+        alert('Please connect and authenticate your wallet first.');
+        return;
+      }
+
+      const collectionSlug = nft.collectionSlug;
+
+      const contractAddress = nft.contractAddress;
+
+      const tokenId = nft.tokenId;
+
+      if (!collectionSlug || !contractAddress) {
+        return;
+      }
+
+      const key = `${contractAddress}-${tokenId}`;
+
+      const response = await axios.post(
+        `${API_URL}/rating`,
+        {
+          collectionSlug,
+          contractAddress,
+          tokenId,
+          rating,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setRatings(prev => ({
+        ...prev,
+
+        [key]: {
+          totalRating: response.data.totalRating,
+
+          ratingCount: response.data.ratingCount,
+
+          averageRating: response.data.averageRating,
+
+          userRating: response.data.rating,
+        },
+      }));
+
+      // Also update discovery data so the
+      // displayed rating stays synchronized.
+
+      const updateNFT = nftItem =>
+        nftItem.contractAddress === contractAddress &&
+        String(nftItem.tokenId) === String(tokenId);
+
+      setMostLiked(prev =>
+        prev.map(item =>
+          updateNFT(item)
+            ? {
+                ...item,
+                averageRating: response.data.averageRating,
+                ratingCount: response.data.ratingCount,
+              }
+            : item
+        )
+      );
+
+      setTopRated(prev =>
+        prev.map(item =>
+          updateNFT(item)
+            ? {
+                ...item,
+                averageRating: response.data.averageRating,
+                ratingCount: response.data.ratingCount,
+              }
+            : item
+        )
+      );
+
+      console.log('Rating saved successfully');
+    } catch (error) {
+      console.error('Rating error:', error);
+
+      if (error.response?.status === 401) {
+        alert(
+          'Your wallet authentication has expired. Please reconnect your wallet.'
+        );
+
+        return;
+      }
+
+      alert('Failed to save rating.');
+    }
+  };
+
+  // =====================================================
+  // SUBMIT COMMENT
+  // =====================================================
+
+  const submitComment = async nft => {
+    try {
+      const token = localStorage.getItem('chibink_auth_token');
+
+      if (!token) {
+        alert('Please connect and authenticate your wallet first.');
+        return;
+      }
+
+      const commentText =
+        commentInputs[`${nft.contractAddress}-${nft.tokenId}`]?.trim();
+
+      if (!commentText) {
+        return;
+      }
+
+      const collectionSlug = nft.collectionSlug;
+
+      const contractAddress = nft.contractAddress;
+
+      const tokenId = nft.tokenId;
+
+      if (!collectionSlug || !contractAddress) {
+        return;
+      }
+
+      const key = `${contractAddress}-${tokenId}`;
+
+      const response = await axios.post(
+        `${API_URL}/comment`,
+        {
+          collectionSlug,
+          contractAddress,
+          tokenId,
+          comment: commentText,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setComments(prev => ({
+        ...prev,
+
+        [key]: [response.data.comment, ...(prev[key] || [])],
+      }));
+
+      setCommentInputs(prev => ({
+        ...prev,
+        [key]: '',
+      }));
+    } catch (error) {
+      console.error('Comment error:', error);
+
+      if (error.response?.status === 401) {
+        alert(
+          'Your wallet authentication has expired. Please reconnect your wallet.'
+        );
+
+        return;
+      }
+
+      alert('Failed to add comment.');
+    }
+  };
+
+  // =====================================================
+  // DELETE COMMENT
+  // =====================================================
+
+  const deleteComment = async (commentId, key) => {
+    try {
+      const token = localStorage.getItem('chibink_auth_token');
+
+      if (!token) {
+        alert('Please connect and authenticate your wallet first.');
+        return;
+      }
+
+      const response = await axios.delete(`${API_URL}/comment/${commentId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      setComments(prev => ({
+        ...prev,
+
+        [key]: (prev[key] || []).filter(comment => comment._id !== commentId),
+      }));
+
+      console.log(response.data.message);
+    } catch (error) {
+      console.error('Delete comment error:', error);
+
+      if (error.response?.status === 401) {
+        alert(
+          'Your wallet authentication has expired. Please reconnect your wallet.'
+        );
+
+        return;
+      }
+
+      if (error.response?.status === 404) {
+        alert('Comment not found or you are not allowed to delete it.');
+
+        return;
+      }
+
+      alert('Failed to delete comment.');
+    }
+  };
+
+  // =====================================================
+  // FORMAT COMMENT TIME
+  // =====================================================
+
+  const formatCommentTime = createdAt => {
+    const date = new Date(createdAt);
+    const now = new Date();
+
+    const diffInSeconds = Math.floor((now - date) / 1000);
+
+    if (diffInSeconds < 60) {
+      return 'just now';
+    }
+
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes}m ago`;
+    }
+
+    const diffInHours = Math.floor(diffInMinutes / 60);
+
+    if (diffInHours < 24) {
+      return `${diffInHours}h ago`;
+    }
+
+    const diffInDays = Math.floor(diffInHours / 24);
+
+    if (diffInDays < 7) {
+      return `${diffInDays}d ago`;
+    }
+
+    return date.toLocaleDateString();
+  };
+
+  // =====================================================
+  // TOGGLE LIKE
+  //
+  // Fast / optimistic UI
+  // =====================================================
+
+  const toggleLike = async nft => {
+    const token = localStorage.getItem('chibink_auth_token');
+
+    if (!token) {
+      alert('Please connect and authenticate your wallet first.');
+      return;
+    }
+
+    const collectionSlug = nft.collectionSlug;
+
+    const contractAddress = nft.contractAddress;
+
+    const tokenId = nft.tokenId;
+
+    if (!collectionSlug || !contractAddress) {
+      return;
+    }
+
+    const key = `${contractAddress}-${tokenId}`;
+
+    const currentLike = likes[key];
+
+    // Prevent double clicks
+    if (currentLike?.updating) {
+      return;
+    }
+
+    const wasLiked = !!currentLike?.liked;
+
+    const previousLike = currentLike || {
+      liked: false,
+      likeCount: 0,
+    };
+
+    // -------------------------------------------------
+    // OPTIMISTIC UPDATE
+    // -------------------------------------------------
+
+    const optimisticLiked = !wasLiked;
+
+    const optimisticLikeCount = Math.max(
+      0,
+      (previousLike.likeCount || 0) + (optimisticLiked ? 1 : -1)
+    );
+
+    setLikes(prev => ({
+      ...prev,
+
+      [key]: {
+        ...previousLike,
+        liked: optimisticLiked,
+        likeCount: optimisticLikeCount,
+        updating: true,
+      },
+    }));
+
+    try {
+      let response;
+
+      // -------------------------------------------------
+      // UNLIKE
+      // -------------------------------------------------
+
+      if (wasLiked) {
+        response = await axios.delete(
+          `${API_URL}/like/${collectionSlug}/${contractAddress}/${tokenId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+      }
+
+      // -------------------------------------------------
+      // LIKE
+      // -------------------------------------------------
+      else {
+        response = await axios.post(
+          `${API_URL}/like`,
+          {
+            collectionSlug,
+            contractAddress,
+            tokenId,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+      }
+
+      // -------------------------------------------------
+      // SERVER CONFIRMED
+      // -------------------------------------------------
+
+      setLikes(prev => ({
+        ...prev,
+
+        [key]: {
+          liked: response.data.liked,
+          likeCount: response.data.likeCount,
+          updating: false,
+        },
+      }));
+
+      // -------------------------------------------------
+      // Update discovery counts
+      // -------------------------------------------------
+
+      const updateLikeCount = nftItem =>
+        nftItem.contractAddress === contractAddress &&
+        String(nftItem.tokenId) === String(tokenId)
+          ? {
+              ...nftItem,
+              likeCount: response.data.likeCount,
+            }
+          : nftItem;
+
+      setMostLiked(prev => prev.map(updateLikeCount));
+
+      setTopRated(prev => prev.map(updateLikeCount));
+
+      // -------------------------------------------------
+      // Notify Navbar about Chibi Points
+      // -------------------------------------------------
+
+      if (!wasLiked && response.data.pointEarned) {
+        window.dispatchEvent(
+          new CustomEvent('chibi-points-updated', {
+            detail: {
+              points: response.data.points,
+            },
+          })
+        );
+      }
+    } catch (error) {
+      console.error('Like error:', error);
+
+      // -------------------------------------------------
+      // ROLLBACK UI
+      // -------------------------------------------------
+
+      setLikes(prev => ({
+        ...prev,
+
+        [key]: {
+          ...previousLike,
+          updating: false,
+        },
+      }));
+
+      if (error.response?.status === 401) {
+        alert(
+          'Your wallet authentication has expired. Please reconnect your wallet.'
+        );
+
+        return;
+      }
+
+      alert('Failed to update like.');
+    }
+  };
+
+  // =====================================================
+  // LOADING STATE
   // =====================================================
 
   return (
@@ -460,142 +1046,311 @@ const Explore = () => {
         {!filteredLoading && !filteredError && displayedNFTs.length > 0 && (
           <div className="nft-grid filtered-nft-grid compact-nft-grid">
             {/* =================================================
-                NFT CARDS
-            ================================================= */}
+                  NFT CARDS
+              ================================================= */}
 
-            {displayedNFTs.map(nft => (
-              <article
-                className="nft-card discovery-card compact-nft-card"
-                key={`${nft.contractAddress}-${nft.tokenId}`}
-                onClick={() => openCollection(nft.collectionSlug)}
-              >
-                {/* IMAGE */}
+            {displayedNFTs.map(nft => {
+              const key = `${nft.contractAddress}-${nft.tokenId}`;
 
-                <div className="nft-image-wrapper compact-image-wrapper">
-                  {nft.image ? (
-                    <img
-                      src={nft.image}
-                      alt={nft.name || `NFT #${nft.tokenId}`}
-                      className="nft-image"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  ) : (
-                    <div className="nft-image-placeholder">INK</div>
-                  )}
-                </div>
+              const nftRating = ratings[key];
 
-                {/* INFO */}
+              const nftLike = likes[key];
 
-                <div className="nft-info compact-nft-info">
-                  <div className="nft-title-row">
-                    <div>
-                      <h3>{nft.name || `#${nft.tokenId}`}</h3>
+              const nftComments = comments[key] || [];
 
-                      <p>{nft.collection || nft.collectionSlug}</p>
-                    </div>
+              const commentInput = commentInputs[key] || '';
+
+              return (
+                <article
+                  className="nft-card discovery-card compact-nft-card"
+                  key={key}
+                  onClick={() => openCollection(nft.collectionSlug)}
+                >
+                  {/* IMAGE */}
+
+                  <div className="nft-image-wrapper compact-image-wrapper">
+                    {nft.image ? (
+                      <img
+                        src={nft.image}
+                        alt={nft.name || `NFT #${nft.tokenId}`}
+                        className="nft-image"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      <div className="nft-image-placeholder">INK</div>
+                    )}
                   </div>
 
-                  {/* TRENDING STATS */}
+                  {/* INFO */}
 
-                  {activeFilter === 'trending' && (
-                    <div className="discovery-stat-row">
-                      <div className="discovery-stat like-stat">
-                        <span className="discovery-stat-icon">♥</span>
+                  <div className="nft-info compact-nft-info">
+                    {/* TITLE */}
 
-                        <strong>{nft.likeCount || 0}</strong>
+                    <div className="nft-title-row">
+                      <div>
+                        <h3>{nft.name || `#${nft.tokenId}`}</h3>
 
-                        <span className="discovery-stat-label">Likes</span>
-                      </div>
-
-                      <div className="discovery-stat rating-stat">
-                        <span className="discovery-stat-icon">★</span>
-
-                        <strong>
-                          {typeof nft.averageRating === 'number'
-                            ? nft.averageRating.toFixed(1)
-                            : '0.0'}
-                        </strong>
-
-                        <span className="discovery-stat-label">Rating</span>
+                        <p>{nft.collection || nft.collectionSlug}</p>
                       </div>
                     </div>
-                  )}
 
-                  {/* MOST LIKED STATS */}
+                    {/* =================================================
+                          RATING
+                      ================================================= */}
 
-                  {activeFilter === 'liked' && (
-                    <div className="discovery-stat-row">
-                      <div className="discovery-stat like-stat">
-                        <span className="discovery-stat-icon">♥</span>
-
-                        <strong>{nft.likeCount || 0}</strong>
-
-                        <span className="discovery-stat-label">Likes</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* TOP RATED STATS */}
-
-                  {activeFilter === 'rated' && (
-                    <div className="discovery-stat-row">
-                      <div className="discovery-stat rating-stat">
-                        <span className="discovery-stat-icon">★</span>
-
-                        <strong>
-                          {typeof nft.averageRating === 'number'
-                            ? nft.averageRating.toFixed(1)
-                            : '0.0'}
-                        </strong>
-
-                        <span className="discovery-stat-label">Rating</span>
-
-                        <span className="rating-votes">
-                          ({nft.ratingCount || 0})
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* INTERACTION */}
-
-                  <div className="interaction-hint">
-                    <span>Click to view & interact</span>
-
-                    <span className="interaction-arrow">→</span>
-                  </div>
-
-                  {/* OPENSEA */}
-
-                  {nft.openseaUrl && (
-                    <button
-                      className="opensea-btn"
-                      type="button"
-                      onClick={event => {
-                        event.stopPropagation();
-
-                        window.open(nft.openseaUrl, '_blank');
-                      }}
+                    <div
+                      className="explore-rating-section"
+                      onClick={event => event.stopPropagation()}
                     >
-                      View on OpenSea
-                      <span>↗</span>
-                    </button>
-                  )}
-                </div>
-              </article>
-            ))}
+                      <div className="explore-rating-top">
+                        <div className="explore-rating-display">
+                          <span className="discovery-stat-icon">★</span>
+
+                          <strong>
+                            {typeof nftRating?.averageRating === 'number'
+                              ? nftRating.averageRating.toFixed(1)
+                              : typeof nft.averageRating === 'number'
+                                ? nft.averageRating.toFixed(1)
+                                : '0.0'}
+                          </strong>
+
+                          <span className="rating-votes">
+                            ({nftRating?.ratingCount ?? nft.ratingCount ?? 0})
+                          </span>
+                        </div>
+
+                        <div className="explore-rating-buttons">
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <button
+                              key={star}
+                              type="button"
+                              className={
+                                nftRating?.userRating >= star
+                                  ? 'explore-rating-star active'
+                                  : 'explore-rating-star'
+                              }
+                              onClick={() => submitRating(nft, star)}
+                              title={`Rate ${star} out of 5`}
+                            >
+                              ★
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* =================================================
+                          LIKE
+                      ================================================= */}
+
+                    <div
+                      className="explore-like-section"
+                      onClick={event => event.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        className={
+                          nftLike?.liked
+                            ? 'explore-like-button liked'
+                            : 'explore-like-button'
+                        }
+                        onClick={() => toggleLike(nft)}
+                        disabled={nftLike?.updating}
+                        aria-label={nftLike?.liked ? 'Unlike NFT' : 'Like NFT'}
+                      >
+                        <span>♥</span>
+
+                        <span>{nftLike?.likeCount ?? nft.likeCount ?? 0}</span>
+
+                        <span className="explore-like-label">Likes</span>
+                      </button>
+                    </div>
+
+                    {/* =================================================
+                          COMMENTS
+                      ================================================= */}
+
+                    <div
+                      className="explore-comments"
+                      onClick={event => event.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        className="explore-comments-toggle"
+                        onClick={() =>
+                          setExpandedComments(prev => ({
+                            ...prev,
+                            [key]: !prev[key],
+                          }))
+                        }
+                      >
+                        <span>
+                          {expandedComments[key]
+                            ? 'Hide comments'
+                            : 'Show comments'}
+                        </span>
+
+                        <span className="explore-comments-count">
+                          {nftComments.length}
+                        </span>
+                      </button>
+
+                      {expandedComments[key] && (
+                        <div className="explore-comments-panel">
+                          {/* COMMENT INPUT */}
+
+                          <div className="explore-comment-input-row">
+                            <input
+                              type="text"
+                              placeholder="Write a comment..."
+                              value={commentInput}
+                              onChange={e =>
+                                setCommentInputs(prev => ({
+                                  ...prev,
+                                  [key]: e.target.value,
+                                }))
+                              }
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  submitComment(nft);
+                                }
+                              }}
+                              maxLength={500}
+                            />
+
+                            <button
+                              type="button"
+                              className="explore-comment-submit"
+                              onClick={() => submitComment(nft)}
+                              disabled={!commentInput.trim()}
+                            >
+                              Post
+                            </button>
+                          </div>
+
+                          {/* COMMENTS LIST */}
+
+                          <div className="explore-comments-list">
+                            {nftComments.length === 0 && (
+                              <div className="explore-no-comments">
+                                No comments yet. Be the first to share your
+                                thoughts.
+                              </div>
+                            )}
+
+                            {nftComments.map(comment => (
+                              <div
+                                className="explore-comment-item"
+                                key={comment._id}
+                              >
+                                <div className="explore-comment-meta">
+                                  <div className="explore-comment-author">
+                                    <span className="explore-comment-wallet">
+                                      {comment.walletAddress.slice(0, 6)}
+                                      ...
+                                      {comment.walletAddress.slice(-4)}
+                                    </span>
+
+                                    <span className="explore-comment-time">
+                                      {formatCommentTime(comment.createdAt)}
+                                    </span>
+                                  </div>
+
+                                  {address &&
+                                    comment.walletAddress.toLowerCase() ===
+                                      address.toLowerCase() && (
+                                      <button
+                                        type="button"
+                                        className="explore-comment-delete"
+                                        onClick={() =>
+                                          deleteComment(comment._id, key)
+                                        }
+                                      >
+                                        Delete
+                                      </button>
+                                    )}
+                                </div>
+
+                                <div className="explore-comment-text">
+                                  {comment.comment}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* =================================================
+                          DISCOVERY STATS
+                      ================================================= */}
+
+                    <div className="discovery-stat-row">
+                      <div className="discovery-stat like-stat">
+                        <span className="discovery-stat-icon">♥</span>
+
+                        <strong>
+                          {nftLike?.likeCount ?? nft.likeCount ?? 0}
+                        </strong>
+
+                        <span className="discovery-stat-label">Likes</span>
+                      </div>
+
+                      <div className="discovery-stat rating-stat">
+                        <span className="discovery-stat-icon">★</span>
+
+                        <strong>
+                          {typeof nftRating?.averageRating === 'number'
+                            ? nftRating.averageRating.toFixed(1)
+                            : typeof nft.averageRating === 'number'
+                              ? nft.averageRating.toFixed(1)
+                              : '0.0'}
+                        </strong>
+
+                        <span className="discovery-stat-label">Rating</span>
+                      </div>
+                    </div>
+
+                    {/* =================================================
+                          INTERACTION HINT
+                      ================================================= */}
+
+                    <div
+                      className="interaction-hint"
+                      onClick={event => event.stopPropagation()}
+                    >
+                      <span>Click to view & interact</span>
+
+                      <span className="interaction-arrow">→</span>
+                    </div>
+
+                    {/* =================================================
+                          OPENSEA
+                      ================================================= */}
+
+                    {nft.openseaUrl && (
+                      <button
+                        type="button"
+                        className="opensea-btn"
+                        onClick={event => {
+                          event.stopPropagation();
+
+                          window.open(nft.openseaUrl, '_blank');
+                        }}
+                      >
+                        View on OpenSea
+                        <span>↗</span>
+                      </button>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
 
             {/* =================================================
-                VIEW ALL
-                IMPORTANT:
-
-                This comes AFTER 15 NFTs when there are
-                more than 16 items.
-
-                Therefore:
-                15 NFTs + View All = 16 grid slots.
-            ================================================= */}
+                  VIEW ALL
+              ================================================= */}
 
             {shouldShowViewAll && (
               <article
